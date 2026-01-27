@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qi Wu | VR & AI Researcher</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000005;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: white;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* 布局容器：左右分栏 */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            pointer-events: none; /* 让鼠标穿透布局层 */
+        }
+
+        /* 左侧内容区域 */
+        .content-area {
+            width: 45%;
+            padding-left: 8%;
+            pointer-events: auto; /* 开启交互 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .card {
+            background: rgba(10, 10, 20, 0.4); /* 极度透明，只留一点模糊 */
+            backdrop-filter: blur(8px);
+            padding: 2.5rem;
+            border-left: 2px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 装饰用的扫描线 */
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 2px;
+            height: 100%;
+            background: #00ffff;
+            transform: scaleY(0);
+            transform-origin: bottom;
+            transition: transform 0.5s ease;
+            box-shadow: 0 0 20px #00ffff;
+        }
+
+        .card:hover {
+            background: rgba(10, 10, 20, 0.6);
+            transform: translateX(10px);
+        }
+
+        .card:hover::before {
+            transform: scaleY(1);
+            transform-origin: top;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(90deg, #ffffff, #88ccff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -2px;
+        }
+
+        h2 {
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: #5f7e97;
+            margin-top: 10px;
+            margin-bottom: 30px;
+        }
+
+        p {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #a0aab5;
+            max-width: 500px;
+            margin-bottom: 1rem;
+        }
+
+        .highlight {
+            color: #42d3ff;
+            font-weight: 600;
+            text-shadow: 0 0 10px rgba(66, 211, 255, 0.3);
+        }
+
+        /* 技能条设计 */
+        .stats {
+            margin-top: 2rem;
+            display: flex;
+            gap: 2rem;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-val {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #5f7e97;
+            text-transform: uppercase;
+        }
+
+        /* 响应式：手机端上下布局 */
+        @media (max-width: 768px) {
+            .content-area {
+                width: 100%;
+                padding: 2rem;
+                padding-top: 50vh; /* 把内容顶下去，留给上面显示3D */
+                background: linear-gradient(to top, #000005 20%, transparent);
+            }
+            .card {
+                background: none;
+                backdrop-filter: none;
+                border: none;
+                padding: 0;
+            }
+            h1 { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container"></div>
+
+    <div id="ui-layer">
+        <div class="content-area">
+            <div class="card" id="active-card">
+                <h1>Qi Wu</h1>
+                <h2>Architect of Reality</h2>
+                
+                <p>
+                    I teach machines to understand human balance.
+                    Focusing on <span class="highlight">VR Cybersickness Mitigation</span> through Deep Learning and immersion evaluation.
+                </p>
+                <p>
+                    Currently optimizing the sensory loop at <strong>IMT Atlantique</strong>.
+                </p>
+
+                <div class="stats">
+                    <div class="stat-item">
+                        <span class="stat-val">Unity</span>
+                        <span class="stat-label">Core Engine</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-val">PyTorch</span>
+                        <span class="stat-label">Neural Nets</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-val">Spatial</span>
+                        <span class="stat-label">Audio & UX</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+
+    <script>
+        // 核心变量
+        let scene, camera, renderer, composer;
+        let mainGroup; // 包含所有3D物体的组
+        let particles, wireframeMesh, coreSphere;
+        
+        // 交互状态
+        let isCardHovered = false;
+        let mouseX = 0;
+        let mouseY = 0;
+        
+        // 动画参数
+        let expansionFactor = 1.0; // 1 = 炸开（混乱）， 0 = 聚合（有序）
+
+        init();
+        animate();
+
+        function init() {
+            // 1. 场景
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x000005, 0.02);
+
+            // 2. 相机 (关键：位置偏左，看向右边，留出左边给文字)
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 25;
+            camera.position.x = -5; // 相机左移
+            
+            // 3. 渲染器
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // 4. 物体组 (将放置在屏幕右侧)
+            mainGroup = new THREE.Group();
+            mainGroup.position.x = 8; // 物体右移，与左侧文字岔开
+            scene.add(mainGroup);
+
+            // --- A. 核心球体 (代表最终的稳定结果) ---
+            const sphereGeo = new THREE.IcosahedronGeometry(4, 1);
+            const sphereMat = new THREE.MeshBasicMaterial({ 
+                color: 0x00ffff, 
+                wireframe: true, 
+                transparent: true, 
+                opacity: 0.1 
+            });
+            coreSphere = new THREE.Mesh(sphereGeo, sphereMat);
+            mainGroup.add(coreSphere);
+
+            // --- B. 粒子云 (代表数据点) ---
+            const pGeo = new THREE.BufferGeometry();
+            const pCount = 3000;
+            const pPos = new Float32Array(pCount * 3);
+            const pTarget = new Float32Array(pCount * 3); // 存储目标位置（形成球体的位置）
+            const pRandom = new Float32Array(pCount * 3); // 存储随机位置（炸开的位置）
+
+            // 辅助计算器
+            const tempVec = new THREE.Vector3();
+            const tempGeo = new THREE.IcosahedronGeometry(4, 4); // 高精度的球体用于取点
+            const targetPositions = tempGeo.attributes.position.array;
+
+            for(let i=0; i<pCount; i++) {
+                // 1. 目标位置：均匀分布在球面上
+                // 如果粒子数多于顶点数，就随机取
+                const index = i % (targetPositions.length / 3);
+                pTarget[i*3] = targetPositions[index*3];
+                pTarget[i*3+1] = targetPositions[index*3+1];
+                pTarget[i*3+2] = targetPositions[index*3+2];
+
+                // 加上一点点随机噪点，让球体看起来不那么死板
+                pTarget[i*3] += (Math.random()-0.5)*0.5;
+                pTarget[i*3+1] += (Math.random()-0.5)*0.5;
+                pTarget[i*3+2] += (Math.random()-0.5)*0.5;
+
+                // 2. 随机位置：散布在空间中
+                pRandom[i*3] = (Math.random() - 0.5) * 30;
+                pRandom[i*3+1] = (Math.random() - 0.5) * 30;
+                pRandom[i*3+2] = (Math.random() - 0.5) * 30;
+
+                // 初始位置设为随机
+                pPos[i*3] = pRandom[i*3];
+                pPos[i*3+1] = pRandom[i*3+1];
+                pPos[i*3+2] = pRandom[i*3+2];
+            }
+
+            pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+            pGeo.setAttribute('targetPos', new THREE.BufferAttribute(pTarget, 3));
+            pGeo.setAttribute('randomPos', new THREE.BufferAttribute(pRandom, 3));
+
+            const pMat = new THREE.PointsMaterial({
+                size: 0.15,
+                color: 0x42d3ff,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            particles = new THREE.Points(pGeo, pMat);
+            mainGroup.add(particles);
+
+            // --- C. 外部连接线 (增加科技感) ---
+            const wireGeo = new THREE.IcosahedronGeometry(5.5, 1);
+            const wireMat = new THREE.MeshBasicMaterial({
+                color: 0x2244aa,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.05
+            });
+            wireframeMesh = new THREE.Mesh(wireGeo, wireMat);
+            mainGroup.add(wireframeMesh);
+
+
+            // 5. 后处理 (Bloom 辉光)
+            const renderScene = new THREE.RenderPass(scene, camera);
+            const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+            bloomPass.threshold = 0;
+            bloomPass.strength = 1.5; // 强度
+            bloomPass.radius = 0.5;
+            
+            composer = new THREE.EffectComposer(renderer);
+            composer.addPass(renderScene);
+            composer.addPass(bloomPass);
+
+            // 6. 事件监听
+            const card = document.getElementById('active-card');
+            card.addEventListener('mouseenter', () => isCardHovered = true);
+            card.addEventListener('mouseleave', () => isCardHovered = false);
+
+            document.addEventListener('mousemove', (e) => {
+                // 归一化鼠标
+                mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+                mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+            });
+
+            window.addEventListener('resize', onWindowResize);
+            onWindowResize(); // 初始化位置
+        }
+
+        function onWindowResize() {
+            const aspect = window.innerWidth / window.innerHeight;
+            camera.aspect = aspect;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+
+            // 响应式布局调整
+            if(window.innerWidth < 768) {
+                mainGroup.position.set(0, 2, 0); // 手机端居中偏上
+                mainGroup.scale.set(0.7, 0.7, 0.7);
+                camera.position.x = 0;
+            } else {
+                mainGroup.position.set(8, 0, 0); // 桌面端居右
+                mainGroup.scale.set(1, 1, 1);
+                camera.position.x = -5;
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const time = performance.now() * 0.001;
+
+            // --- 1. 交互状态逻辑 ---
+            // 目标: hover 时 expansionFactor -> 0 (聚合), 否则 -> 1 (炸开)
+            const targetExpansion = isCardHovered ? 0 : 1;
+            expansionFactor += (targetExpansion - expansionFactor) * 0.03; // 缓动插值
+
+            // --- 2. 粒子动画 (Morphing) ---
+            const positions = particles.geometry.attributes.position.array;
+            const targets = particles.geometry.attributes.targetPos.array;
+            const randoms = particles.geometry.attributes.randomPos.array;
+
+            for(let i=0; i<positions.length; i+=3) {
+                // 计算当前应该是 随机点 还是 目标点
+                // 使用简单的线性插值
+                const tx = targets[i];
+                const ty = targets[i+1];
+                const tz = targets[i+2];
+
+                const rx = randoms[i];
+                const ry = randoms[i+1];
+                const rz = randoms[i+2];
+
+                // 混合： expansionFactor 越大，越接近 random
+                const cx = tx + (rx - tx) * expansionFactor;
+                const cy = ty + (ry - ty) * expansionFactor;
+                const cz = tz + (rz - tz) * expansionFactor;
+
+                // 加上动态漂浮 (呼吸感)
+                const noise = Math.sin(time * 2 + i) * 0.2 * expansionFactor; // 只有散开时才大幅漂浮
+
+                positions[i] += (cx - positions[i] + noise) * 0.1;
+                positions[i+1] += (cy - positions[i+1] + noise) * 0.1;
+                positions[i+2] += (cz - positions[i+2] + noise) * 0.1;
+            }
+            particles.geometry.attributes.position.needsUpdate = true;
+
+            // --- 3. 整体旋转与跟随 ---
+            // 散开时转得慢且乱，聚合时转得稳且快
+            const rotSpeed = 0.001 + (1 - expansionFactor) * 0.005;
+            mainGroup.rotation.y += rotSpeed;
+            mainGroup.rotation.x += rotSpeed * 0.5;
+
+            // 鼠标视差 (Parallax)
+            // 无论何时都有一点鼠标跟随，增加深度感
+            mainGroup.rotation.y += mouseX * 0.05;
+            mainGroup.rotation.x += mouseY * 0.05;
+
+            // --- 4. 颜色与辉光变化 ---
+            // 聚合时，颜色变得更亮更青；散开时，比较暗淡
+            // 通过改变 opacity 或 scale
+            wireframeMesh.material.opacity = (1 - expansionFactor) * 0.15; // 只有聚合时才显示外框
+            wireframeMesh.scale.setScalar(1 + Math.sin(time)*0.05); // 外框呼吸
+
+            coreSphere.rotation.y -= 0.02; // 内部反向旋转
+
+            composer.render();
+        }
+    </script>
+</body>
+</html>
